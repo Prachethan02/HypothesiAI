@@ -13,6 +13,7 @@ import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
 import { Papers } from './pages/Papers';
 import { PaperDetail } from './pages/PaperDetail';
+import { TopicsDashboard } from './pages/TopicsDashboard';
 import { AnalysisDetail } from './pages/AnalysisDetail';
 import { ResearchGaps } from './pages/ResearchGaps';
 import { GapDetail } from './pages/GapDetail';
@@ -61,11 +62,11 @@ export const App: React.FC = () => {
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="analysis/:id"
+                        <Route
+              path="topics"
               element={
                 <ProtectedRoute>
-                  <AnalysisDetail />
+                  <TopicsDashboard />
                 </ProtectedRoute>
               }
             />

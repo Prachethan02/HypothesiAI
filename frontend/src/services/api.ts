@@ -386,6 +386,17 @@ export const apiService = {
     }
   },
 
+  // Topics API (Stage 10)
+  generateTopics: async (): Promise<{ success: boolean; data: any }> => {
+    const res = await apiClient.post('/topics/generate');
+    return res.data;
+  },
+
+  getTopics: async (): Promise<{ success: boolean; data: { run: any; topics: any[] } }> => {
+    const res = await apiClient.get('/topics');
+    return res.data;
+  },
+
   // Analysis Runs API
   getAnalysisRuns: async (): Promise<AnalysisRun[]> => {
     try {

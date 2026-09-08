@@ -3,11 +3,12 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   FileText,
-  Compass,
   Lightbulb,
   Settings,
   Activity,
   Layers,
+  Globe,
+  Compass,
 } from 'lucide-react';
 
 interface NavItem {
@@ -20,6 +21,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { name: 'Paper Library', path: '/papers', icon: FileText },
+  { name: 'Topic Models', path: '/topics', icon: Globe },
   { name: 'Research Gaps', path: '/research-gaps', icon: Compass },
   { name: 'Hypothesis Studio', path: '/hypotheses', icon: Lightbulb },
   { name: 'Settings', path: '/settings', icon: Settings },

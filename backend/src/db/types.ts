@@ -147,6 +147,35 @@ export interface EntityResolutionDecision {
   created_at: Date;
 }
 
+export interface TopicModelingRun {
+  id: string;
+  status: 'running' | 'completed' | 'failed';
+  model_id?: string | null;
+  parameters?: Record<string, any>;
+  created_at: Date;
+}
+
+export interface TopicRecord {
+  id: string;
+  run_id: string;
+  topic_index: number;
+  name: string;
+  representation: Array<{ word: string; score: number }>;
+  frequency: number;
+  representative_docs?: string[] | null;
+  created_at: Date;
+}
+
+export interface TopicDocumentRecord {
+  id: string;
+  topic_id: string;
+  document_id: string;
+  document_type: string;
+  paper_id?: string | null;
+  text: string;
+  created_at: Date;
+}
+
 // 6. Paper Relationship
 export interface PaperRelationship {
   id: string;
