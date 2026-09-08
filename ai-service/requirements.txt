@@ -1,0 +1,25 @@
+# HypothesiAI AI Service Dependencies
+# Core web framework & runtime
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0
+pydantic>=2.10.0
+pydantic-settings>=2.7.0
+httpx>=0.28.0
+python-dotenv>=1.0.1
+python-multipart>=0.0.9
+
+# Stage 5: PDF Ingestion
+PyMuPDF>=1.25.0
+
+# Testing
+pytest>=8.3.0
+pytest-asyncio>=0.25.0
+
+# Future pipeline packages (installed in respective stages):
+# torch>=2.2.0
+# transformers>=4.48.0
+# sentence-transformers>=3.4.0
+rapidfuzz>=3.11.0
+# bertopic>=0.16.0
+# hdbscan>=0.8.39
+# mlxtend>=0.23.0
