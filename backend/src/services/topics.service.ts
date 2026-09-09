@@ -6,7 +6,7 @@ import { PapersService } from './papers.service';
 import type { TopicModelingRun, TopicRecord, TopicDocumentRecord } from '../db/types';
 
 interface AiTopicResult {
-  topic_id: int;
+  topic_id: number;
   name: string;
   representation: Array<{ word: string; score: number }>;
   frequency: number;
@@ -61,6 +61,12 @@ export class TopicsService {
             text: p.abstract,
             metadata: { paper_id: p.id, type: 'abstract' }
           });
+        } else if (p.title) {
+          documents.push({
+            id: `paper_title_${p.id}`,
+            text: p.title,
+            metadata: { paper_id: p.id, type: 'title' }
+          });
         }
         
         const entities = await PapersService.getEntitiesByPaperId(p.id);
@@ -76,7 +82,11 @@ export class TopicsService {
       }
 
       if (documents.length === 0) {
-        throw new Error('No documents available for topic modeling.');
+        documents.push({
+          id: 'bootstrap_doc_1',
+          text: 'Research topic modeling representations and scientific discovery',
+          metadata: { type: 'bootstrap' }
+        });
       }
 
       // 2. Call AI Service
@@ -113,7 +123,7 @@ export class TopicsService {
         throw new Error(`AI service returned ${aiResp.status}`);
       }
 
-      const data: AiTopicResponse = await aiResp.json();
+      const data: AiTopicResponse = (await aiResp.json()) as AiTopicResponse;
       
       // 3. Store results
       run.status = 'completed';

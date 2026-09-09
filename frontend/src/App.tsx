@@ -11,16 +11,23 @@ import { Register } from './pages/Register';
 
 // App pages
 import { Dashboard } from './pages/Dashboard';
+import { CorpusStudio } from './pages/CorpusStudio';
 import { Papers } from './pages/Papers';
 import { PaperDetail } from './pages/PaperDetail';
 import { TopicsDashboard } from './pages/TopicsDashboard';
-import { AnalysisDetail } from './pages/AnalysisDetail';
-import { ResearchGaps } from './pages/ResearchGaps';
-import { GapDetail } from './pages/GapDetail';
 import { Hypotheses } from './pages/Hypotheses';
 import { Settings } from './pages/Settings';
 import { HealthStatus } from './pages/HealthStatus';
 import { NotFound } from './pages/NotFound';
+import EvidenceClustersDashboard from './pages/EvidenceClustersDashboard';
+import PatternMiningDashboard from './pages/PatternMiningDashboard';
+import ContradictionsDashboard from './pages/ContradictionsDashboard';
+import EvidenceDashboard from './pages/EvidenceDashboard';
+import GapRankingDashboard from './pages/GapRankingDashboard';
+import RankedGapDetail from './pages/RankedGapDetail';
+import GlobalSearch from './pages/GlobalSearch';
+import DiscoverPapers from './pages/DiscoverPapers';
+import KnowledgeGraph from './pages/KnowledgeGraph';
 
 export const App: React.FC = () => {
   return (
@@ -43,6 +50,22 @@ export const App: React.FC = () => {
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="corpus"
+              element={
+                <ProtectedRoute>
+                  <CorpusStudio />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="corpus/:id"
+              element={
+                <ProtectedRoute>
+                  <CorpusStudio />
                 </ProtectedRoute>
               }
             />
@@ -71,10 +94,50 @@ export const App: React.FC = () => {
               }
             />
             <Route
+              path="evidence-clusters"
+              element={
+                <ProtectedRoute>
+                  <EvidenceClustersDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="patterns"
+              element={
+                <ProtectedRoute>
+                  <PatternMiningDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="contradictions"
+              element={
+                <ProtectedRoute>
+                  <ContradictionsDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="evidence"
+              element={
+                <ProtectedRoute>
+                  <EvidenceDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="research-gaps"
               element={
                 <ProtectedRoute>
-                  <ResearchGaps />
+                  <GapRankingDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="research-gaps/:id"
+              element={
+                <ProtectedRoute>
+                  <RankedGapDetail />
                 </ProtectedRoute>
               }
             />
@@ -82,7 +145,7 @@ export const App: React.FC = () => {
               path="gaps/:id"
               element={
                 <ProtectedRoute>
-                  <GapDetail />
+                  <RankedGapDetail />
                 </ProtectedRoute>
               }
             />
@@ -91,6 +154,30 @@ export const App: React.FC = () => {
               element={
                 <ProtectedRoute>
                   <Hypotheses />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="search"
+              element={
+                <ProtectedRoute>
+                  <GlobalSearch />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="discover"
+              element={
+                <ProtectedRoute>
+                  <DiscoverPapers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="knowledge-graph"
+              element={
+                <ProtectedRoute>
+                  <KnowledgeGraph />
                 </ProtectedRoute>
               }
             />

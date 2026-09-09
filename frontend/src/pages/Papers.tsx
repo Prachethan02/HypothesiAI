@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { UploadCloud, Search, ExternalLink, Calendar, BookOpen, AlertCircle, RefreshCw } from 'lucide-react';
+import { UploadCloud, Search, ExternalLink, Calendar, BookOpen, AlertCircle, RefreshCw, Trash2 } from 'lucide-react';
 import { apiService, Paper } from '../services/api';
 import {
   Button,
@@ -29,6 +29,12 @@ export const Papers: React.FC = () => {
   const [customTitle, setCustomTitle] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Purge Whole Corpus Modal State
+  const [isPurgeOpen, setIsPurgeOpen] = useState<boolean>(false);
+  const [purgeConfirmText, setPurgeConfirmText] = useState<string>('');
+  const [purging, setPurging] = useState<boolean>(false);
+  const [purgeError, setPurgeError] = useState<string | null>(null);
 
   const fetchPapers = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -90,6 +96,21 @@ export const Papers: React.FC = () => {
       setUploadError(err.response?.data?.error?.message || err.message || 'Upload failed');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handlePurgeWholeCorpus = async () => {
+    setPurging(true);
+    setPurgeError(null);
+    try {
+      await apiService.purgeWholeCorpus();
+      setIsPurgeOpen(false);
+      setPurgeConfirmText('');
+      await fetchPapers();
+    } catch (err: any) {
+      setPurgeError(err.response?.data?.error?.message || err.message || 'Failed to delete whole corpus');
+    } finally {
+      setPurging(false);
     }
   };
 
@@ -155,6 +176,18 @@ export const Papers: React.FC = () => {
             }}
           >
             Upload Research Paper
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            leftIcon={<Trash2 size={14} />}
+            onClick={() => {
+              setPurgeError(null);
+              setPurgeConfirmText('');
+              setIsPurgeOpen(true);
+            }}
+          >
+            Delete Whole Corpus
           </Button>
         </div>
       </div>
@@ -362,6 +395,77 @@ export const Papers: React.FC = () => {
               </div>
             </div>
           )}
+        </div>
+      </Modal>
+
+      {/* ── Purge Whole Corpus Confirmation Modal ──────────────────────────── */}
+      <Modal
+        isOpen={isPurgeOpen}
+        onClose={() => !purging && setIsPurgeOpen(false)}
+        title="Delete Whole Corpus & Reset Workspace"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', padding: '1rem', backgroundColor: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '0.5rem', color: '#fca5a5', fontSize: '0.875rem' }}>
+            <AlertCircle size={22} style={{ flexShrink: 0, marginTop: '0.1rem', color: '#ef4444' }} />
+            <div>
+              <div style={{ fontWeight: 700, color: '#ffffff', marginBottom: '0.35rem', fontSize: '0.95rem' }}>
+                High-Impact Action: Complete Corpus Deletion
+              </div>
+              <p style={{ lineHeight: 1.5, margin: 0 }}>
+                This will permanently delete <strong>all {papers.length} research papers, all extracted entities, sections, knowledge graphs, and research gaps</strong> from the workspace.
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '0.4rem' }}>
+              To confirm, type <strong style={{ color: '#ef4444' }}>DELETE</strong> in the box below:
+            </label>
+            <input
+              type="text"
+              value={purgeConfirmText}
+              onChange={(e) => setPurgeConfirmText(e.target.value)}
+              placeholder="Type DELETE to confirm"
+              disabled={purging}
+              style={{
+                width: '100%',
+                padding: '0.6rem 0.75rem',
+                backgroundColor: 'var(--bg-primary, #0f172a)',
+                border: `1px solid ${purgeConfirmText === 'DELETE' ? '#ef4444' : 'var(--border-color)'}`,
+                borderRadius: '0.375rem',
+                color: '#ffffff',
+                fontSize: '0.875rem',
+              }}
+            />
+          </div>
+
+          {purgeError && (
+            <div style={{ color: '#f87171', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <AlertCircle size={15} />
+              <span>{purgeError}</span>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setIsPurgeOpen(false)}
+              disabled={purging}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              isLoading={purging}
+              disabled={purging || purgeConfirmText !== 'DELETE'}
+              leftIcon={<Trash2 size={14} />}
+              onClick={handlePurgeWholeCorpus}
+            >
+              Delete Whole Corpus
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Activity, LogOut, User as UserIcon, LogIn } from 'lucide-react';
+import { Sparkles, LogOut, User as UserIcon, LogIn } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -44,7 +44,6 @@ export const Navbar: React.FC = () => {
           <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
             <h1 style={{ fontSize: '1.125rem', fontWeight: 700, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               HypothesiAI
-              <span className="badge badge-info" style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem' }}>Stage 3</span>
             </h1>
           </Link>
           <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Scientific Literature & Hypothesis Engine</p>
@@ -53,14 +52,6 @@ export const Navbar: React.FC = () => {
 
       {/* Quick Actions & Auth Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <Link
-          to="/health"
-          className="btn-secondary"
-          style={{ fontSize: '0.75rem', padding: '0.4rem 0.8rem', gap: '0.4rem' }}
-        >
-          <Activity size={14} color="#10b981" />
-          <span>System Status</span>
-        </Link>
 
         {isAuthenticated && user ? (
           <div style={{

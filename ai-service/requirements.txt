@@ -7,6 +7,7 @@ pydantic-settings>=2.7.0
 httpx>=0.28.0
 python-dotenv>=1.0.1
 python-multipart>=0.0.9
+psutil>=5.9.0
 
 # Stage 5: PDF Ingestion
 PyMuPDF>=1.25.0
@@ -20,7 +21,15 @@ pytest-asyncio>=0.25.0
 # transformers>=4.48.0
 # sentence-transformers>=3.4.0
 rapidfuzz>=3.11.0
-bertopic>=0.16.0
+numpy>=1.26.0
+pandas>=2.2.0
 hdbscan>=0.8.39
+umap-learn>=0.5.6
 mlxtend>=0.23.0
 scikit-learn>=1.3.0
+# Optional: enable MiniLM neural embeddings (Stage 7). HDBSCAN still runs on fallback vectors.
+# torch>=2.2.0
+# transformers>=4.48.0
+# sentence-transformers>=3.4.0
+# bertopic remains optional; Stage 11 uses HDBSCAN on embeddings directly.
+# bertopic>=0.16.0

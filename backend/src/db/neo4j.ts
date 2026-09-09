@@ -6,32 +6,34 @@ let driver: Driver | null = null;
 let isConnected = false;
 
 /**
- * Initialize Neo4j driver connection.
+ * Initialize Neo4j driver connection with cloud compatibility (AuraDB, self-hosted, Docker).
  */
 export async function initNeo4j(): Promise<void> {
   if (driver) return;
 
   try {
-    // Only attempt connection if not in test env (or if explicitly requested)
     if (config.NODE_ENV === 'test') {
       logger.info('Skipping Neo4j initialization in test environment.');
       return;
     }
+
+    const isAura = config.NEO4J_URI.startsWith('neo4j+s://') || config.NEO4J_URI.startsWith('neo4j+ssc://');
 
     driver = neo4j.driver(
       config.NEO4J_URI,
       neo4j.auth.basic(config.NEO4J_USER, config.NEO4J_PASSWORD),
       {
         maxConnectionPoolSize: 50,
-        connectionTimeout: 5000,
+        connectionTimeout: 10000,
         maxConnectionLifetime: 3 * 60 * 60 * 1000, // 3 hours
+        encrypted: isAura || config.NEO4J_ENCRYPTED ? 'ENCRYPTION_ON' : 'ENCRYPTION_OFF',
       }
     );
 
     // Verify connectivity
     const serverInfo = await driver.getServerInfo();
     isConnected = true;
-    logger.info(`Connected to Neo4j database (Protocol: ${serverInfo.protocolVersion})`);
+    logger.info(`Connected to Neo4j database at ${config.NEO4J_URI} (Protocol: ${serverInfo.protocolVersion})`);
   } catch (err: any) {
     logger.warn(`Failed to connect to Neo4j at ${config.NEO4J_URI}: ${err.message}`);
     logger.warn('Graph features will fallback to in-memory mode.');
@@ -53,15 +55,14 @@ export async function closeNeo4j(): Promise<void> {
 }
 
 /**
- * Execute a Cypher query on the Neo4j database.
- * Returns the raw records or falls back to throwing an error if Neo4j is unavailable.
+ * Execute a Cypher query on the Neo4j database with database routing.
  */
 export async function runCypher(query: string, params: Record<string, any> = {}): Promise<any[]> {
   if (!driver || !isConnected) {
     throw new Error('Neo4j driver is not initialized or connected.');
   }
 
-  const session: Session = driver.session();
+  const session: Session = driver.session({ database: config.NEO4J_DATABASE || 'neo4j' });
   try {
     const result = await session.run(query, params);
     return result.records;
@@ -81,7 +82,7 @@ export async function checkNeo4jConnection(): Promise<{ status: string; error?: 
   if (config.NODE_ENV === 'test') {
     return { status: 'mocked_for_tests' };
   }
-  
+
   if (!driver || !isConnected) {
     return { status: 'disconnected', error: 'Driver uninitialized or disconnected' };
   }
@@ -92,4 +93,3 @@ export async function checkNeo4jConnection(): Promise<{ status: string; error?: 
     return { status: 'error', error: err.message };
   }
 }
-

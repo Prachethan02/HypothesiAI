@@ -176,6 +176,359 @@ export interface TopicDocumentRecord {
   created_at: Date;
 }
 
+// ─── Stage 11 – Evidence Clustering (HDBSCAN) ────────────────────────────────
+
+export interface EvidenceClusterRun {
+  id: string;
+  status: 'running' | 'completed' | 'failed';
+  min_cluster_size: number;
+  min_samples?: number | null;
+  algorithm: string;
+  document_count?: number | null;
+  cluster_count?: number | null;
+  noise_count?: number | null;
+  error_message?: string | null;
+  created_at: Date;
+  completed_at?: Date | null;
+}
+
+export interface EvidenceCluster {
+  id: string;
+  run_id: string;
+  cluster_index: number;           // HDBSCAN label (>= 0 or -1 for noise)
+  is_noise: boolean;
+  statement_type: string;          // limitation | future_work | problem
+  name: string;
+  summary?: string | null;
+  size: number;
+  paper_count: number;
+  paper_ids: string[];
+  representative_statements: string[];
+  top_terms: Array<{ word: string; score: number }>;
+  signal_kind: string;             // always "evidence_cluster"
+  created_at: Date;
+}
+
+export interface EvidenceClusterStatement {
+  id: string;
+  cluster_id: string;
+  run_id: string;
+  document_id: string;
+  paper_id?: string | null;
+  paper_title?: string | null;
+  statement_type: string;
+  text: string;
+  similarity_to_centroid?: number | null;
+  is_representative: boolean;
+  created_at: Date;
+}
+
+// ─── Stage 12 – Research Pattern Mining (FP-Growth / Apriori) ────────────────
+
+export interface PatternMiningRun {
+  id: string;
+  status: 'running' | 'completed' | 'failed';
+  algorithm: string;              // fpgrowth | apriori
+  min_support: number;
+  min_confidence: number;
+  n_papers?: number | null;
+  frequent_pattern_count?: number | null;
+  association_rule_count?: number | null;
+  underexplored_candidate_count?: number | null;
+  error_message?: string | null;
+  created_at: Date;
+  completed_at?: Date | null;
+}
+
+export interface ResearchPattern {
+  id: string;
+  run_id: string;
+  pattern_label: string;
+  items: string[];
+  entity_types: string[];
+  combo_type?: string | null;     // e.g. "Method + Dataset"
+  support: number;
+  paper_count: number;
+  paper_ids: string[];
+  algorithm: string;
+  created_at: Date;
+}
+
+export interface PatternAssociationRule {
+  id: string;
+  run_id: string;
+  antecedent: string[];
+  consequent: string[];
+  support: number;
+  confidence: number;
+  lift: number;
+  paper_count: number;
+  paper_ids: string[];
+  created_at: Date;
+}
+
+export interface UnderexploredCandidate {
+  id: string;
+  run_id: string;
+  combo_type?: string | null;
+  items: string[];
+  combo_label: string;
+  observed_support?: number | null;   // null if never observed
+  underexplored_score: number;        // heuristic [0-1], NOT a gap score
+  paper_count: number;
+  paper_ids: string[];
+  label: string;                      // always "underexplored candidate"
+  note?: string | null;
+  created_at: Date;
+}
+
+// ─── Stage 13 – Contradiction Analysis (Natural Language Inference) ──────────
+
+export type NLIRelationLabel = 'ENTAILMENT' | 'CONTRADICTION' | 'NEUTRAL';
+export type ContradictionVerificationStatus = 'candidate_signal' | 'confirmed' | 'dismissed';
+
+export interface NLIAnalysisRun {
+  id: string;
+  status: 'running' | 'completed' | 'failed';
+  semantic_threshold: number;
+  model_name: string;
+  total_findings?: number | null;
+  pairs_evaluated?: number | null;
+  contradiction_count?: number | null;
+  entailment_count?: number | null;
+  neutral_count?: number | null;
+  error_message?: string | null;
+  created_at: Date;
+  completed_at?: Date | null;
+}
+
+export interface NLIStatementComparison {
+  id: string;
+  run_id: string;
+  statement_a_id: string;
+  statement_a_text: string;
+  statement_a_page?: number | null;
+  statement_a_section?: string | null;
+  paper_a_id: string;
+  paper_a_title: string;
+
+  statement_b_id: string;
+  statement_b_text: string;
+  statement_b_page?: number | null;
+  statement_b_section?: string | null;
+  paper_b_id: string;
+  paper_b_title: string;
+
+  nli_label: NLIRelationLabel;
+  confidence: number;
+  semantic_similarity: number;
+  probabilities?: Record<string, number> | null;
+  status: ContradictionVerificationStatus;
+  is_candidate_signal: boolean;
+  review_notes?: string | null;
+  created_at: Date;
+}
+
+// ─── Stage 14 – Unified Evidence Aggregation ─────────────────────────────────
+
+export interface ScoringWeightsConfig {
+  recurring_limitations?: number;
+  future_work_frequency?: number;
+  limitation_clusters?: number;
+  topic_trends?: number;
+  underexplored_method_dataset?: number;
+  contradiction_evidence?: number;
+  kg_structural_gaps?: number;
+  disconnected_research_areas?: number;
+  temporal_decline_stagnation?: number;
+  independent_paper_support?: number;
+}
+
+export interface SourcePaperRef {
+  id: string;
+  title: string;
+  doi?: string | null;
+  publication_year?: number | null;
+}
+
+export interface EvidenceAggregationRun {
+  id: string;
+  status: 'running' | 'completed' | 'failed';
+  weights_used: Record<string, number>;
+  min_score: number;
+  candidate_evidence_count?: number | null;
+  signals_evaluated?: number | null;
+  error_message?: string | null;
+  created_at: Date;
+  completed_at?: Date | null;
+}
+
+export interface AggregatedEvidenceItem {
+  id: string;
+  evidence_id: string;
+  run_id?: string | null;
+  evidence_type: string;
+  title: string;
+  description: string;
+  score: number;
+  confidence: number;
+  source_papers: SourcePaperRef[];
+  source_pages: number[];
+  source_statements: string[];
+  metadata?: Record<string, any>;
+  created_at: Date;
+}
+
+// ─── Stage 15 – Research-Gap Ranking ─────────────────────────────────────────
+
+export interface RankingWeightsConfig {
+  recurrence?: number;
+  evidence_strength?: number;
+  independent_paper_support?: number;
+  contradiction_strength?: number;
+  underexplored_combination_strength?: number;
+  topic_relevance?: number;
+  temporal_signal?: number;
+  graph_evidence?: number;
+  confidence?: number;
+}
+
+export interface RankedGapDimension {
+  name: string;
+  weight: number;
+  raw_score: number;
+  weighted_contribution: number;
+  explanation: string;
+}
+
+export interface RGQSComponents {
+  gapValidity: number;        // G in [0, 1] (30%)
+  evidenceGrounding: number;  // E in [0, 1] (25%)
+  traceability: number;       // T in [0, 1] (20%)
+  novelty: number;            // N in [0, 1] (15%)
+  consistency: number;        // C in [0, 1] (10%)
+}
+
+export interface RGQSWeights {
+  gapValidity: number;        // 0.30
+  evidenceGrounding: number;  // 0.25
+  traceability: number;       // 0.20
+  novelty: number;            // 0.15
+  consistency: number;        // 0.10
+}
+
+export interface RGQSEvidenceQuality {
+  unique_papers: number;
+  total_statements: number;
+  limitation_statements: number;
+  future_work_statements: number;
+  has_verbatim_quotes: boolean;
+  has_page_provenance: boolean;
+  diminishing_returns_factor: number;   // 0–1: log-diminishing scale of unique papers
+  cross_paper_agreement: boolean;       // true if ≥2 unique papers share the limitation signal
+}
+
+export interface RGQSBreakdown {
+  rgqs: number;               // [0, 100]
+  components: RGQSComponents;
+  weights: RGQSWeights;
+  explanation: string;
+  supportingEvidenceCount: number;
+  supportingPaperCount: number;
+  tier: 'Strong' | 'Moderate' | 'Weak' | 'Low-confidence';
+  // Extended quality signals (new)
+  evidence_quality?: RGQSEvidenceQuality;
+  corroboration_level?: 'strong' | 'moderate' | 'weak' | 'single_source';
+  contradiction_level?: 'none' | 'minor' | 'moderate' | 'high';
+  provenance_completeness?: number;   // 0–1
+  scoring_notes?: string[];           // per-dimension rationale
+}
+
+export interface RankedResearchGap {
+  id?: string;
+  gap_id: string;
+  run_id?: string | null;
+  title: string;
+  description: string;
+  composite_score: number;
+  confidence: number;
+  rank: number;
+  evidence_type: string;
+  why_identified: string;
+  dimensions: RankedGapDimension[];
+  evidence_ids: string[];
+  source_papers: SourcePaperRef[];
+  source_pages: number[];
+  source_statements: string[];
+  rgqs?: number;
+  gap_validity_score?: number;
+  evidence_grounding_score?: number;
+  traceability_score?: number;
+  novelty_score?: number;
+  consistency_score?: number;
+  rgqs_breakdown?: RGQSBreakdown;
+  metadata?: Record<string, any>;
+  created_at?: Date;
+  // Extended provenance signals for improved RGQS (new)
+  unique_paper_ids?: string[];
+  limitation_statement_count?: number;
+  future_work_statement_count?: number;
+  contradiction_count?: number;
+  corpus_paper_count?: number;
+  topic_coverage_fraction?: number;
+}
+
+export interface GapRankingRun {
+  id: string;
+  status: 'running' | 'completed' | 'failed';
+  weights_used: Record<string, number>;
+  min_composite_score: number;
+  total_candidates?: number | null;
+  ranked_count?: number | null;
+  error_message?: string | null;
+  created_at: Date;
+  completed_at?: Date | null;
+}
+
+// ─── Stage 16 – Evidence-Grounded Hypotheses ─────────────────────────────────
+
+export interface HypothesisVariable {
+  name: string;
+  type: 'independent' | 'dependent' | 'control';
+  description: string;
+}
+
+export interface SupportingEvidenceItem {
+  evidence_id: string;
+  type: string;
+  description: string;
+  source_paper_title?: string | null;
+}
+
+export interface GroundedHypothesisRecord {
+  id?: string;
+  hypothesis_id: string;
+  gap_id: string;
+  title: string;
+  hypothesis: string;
+  research_question: string;
+  rationale: string;
+  expected_relationship: string;
+  variables: HypothesisVariable[];
+  possible_methodology: string;
+  expected_contribution: string;
+  supporting_evidence: SupportingEvidenceItem[];
+  limitations_uncertainty: string;
+  evidence_bundle: Record<string, any>;
+  confidence_score: number;
+  llm_provider?: string | null;
+  llm_model?: string | null;
+  regeneration_count: number;
+  created_at?: Date;
+  updated_at?: Date;
+}
+
+
 // 6. Paper Relationship
 export interface PaperRelationship {
   id: string;
@@ -230,8 +583,8 @@ export interface FutureWorkCluster {
   updated_at: Date;
 }
 
-// 10. Research Pattern
-export interface ResearchPattern {
+// 10. Research Pattern (Extended)
+export interface ExtendedResearchPattern {
   id: string;
   pattern_type: 'co_occurrence' | 'rare_combination' | 'method_gap';
   antecedent_entities: string[];
@@ -326,7 +679,33 @@ export interface AnalysisRun {
   updated_at: Date;
 }
 
-export const ALL_TABLE_NAMES = [
+// 16. Research Corpus
+export type CorpusStatus = 'draft' | 'created' | 'uploading' | 'parsing' | 'ready' | 'analyzing' | 'analyzed' | 'completed' | 'failed';
+
+export interface Corpus {
+  id: string;
+  user_id?: string | null;
+  name: string;
+  description?: string | null;
+  status: CorpusStatus;
+  analysis_progress: number;
+  metadata?: Record<string, any>;
+  paper_count?: number;
+  created_at: Date;
+  updated_at: Date;
+}
+
+// 17. Corpus Paper Mapping
+export interface CorpusPaper {
+  id: string;
+  corpus_id: string;
+  paper_id: string;
+  source: 'upload' | 'academic_search';
+  added_at: Date;
+  paper?: Paper;
+}
+
+export const CORE_TABLE_NAMES = [
   'users',
   'papers',
   'paper_sections',
@@ -342,6 +721,12 @@ export const ALL_TABLE_NAMES = [
   'gap_evidence',
   'hypotheses',
   'analysis_runs',
+] as const;
+
+export const ALL_TABLE_NAMES = [
+  ...CORE_TABLE_NAMES,
+  'corpora',
+  'corpus_papers',
 ] as const;
 
 export type TableName = (typeof ALL_TABLE_NAMES)[number];

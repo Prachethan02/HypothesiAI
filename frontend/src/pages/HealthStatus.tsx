@@ -132,7 +132,7 @@ export const HealthStatus: React.FC = () => {
             <div>Runtime: <strong>Python 3.13 + FastAPI</strong></div>
             <div>Port: <code>8000</code></div>
             <div>Pipeline Scaffolding: <strong>8 Stages Registered</strong></div>
-            <div>Status: {readiness?.checks?.ai_service?.status || 'Active on localhost:8000'}</div>
+            <div>Status: {readiness?.checks?.ai_service?.status || 'Configured AI Service'}</div>
           </div>
         </div>
 
@@ -156,7 +156,7 @@ export const HealthStatus: React.FC = () => {
           <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
             <div>DDL: <code>database/schema.sql</code></div>
             <div>Tables: <code>users, papers, sections, entities, gaps, evidence, hypotheses</code></div>
-            <div>Connection: {readiness?.checks?.postgres?.status || 'Docker / Supabase Ready'}</div>
+            <div>Connection: {readiness?.checks?.postgres?.status || 'Configured via DATABASE_URL'}</div>
           </div>
         </div>
 
@@ -178,9 +178,8 @@ export const HealthStatus: React.FC = () => {
             )}
           </div>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-            <div>Protocol: <code>bolt://localhost:7687</code></div>
-            <div>Browser: <code>http://localhost:7474</code></div>
-            <div>Driver: <strong>neo4j-driver connection manager active</strong></div>
+            <div>Protocol: <code>Configured via NEO4J_URI</code></div>
+            <div>Connection: <strong>neo4j-driver connection manager active</strong></div>
           </div>
         </div>
       </div>

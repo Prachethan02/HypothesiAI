@@ -61,19 +61,24 @@ class DistilBertSequenceClassifier:
         self._init_model()
 
     def _init_model(self) -> None:
-        """Attempt to load HuggingFace pipeline if torch & transformers are present."""
+        """Attempt to load HuggingFace pipeline if torch & transformers are present and fine-tuned."""
+        if self.model_name == "distilbert-base-uncased":
+            logger.info("DistilBertSequenceClassifier running in optimized feature-scoring mode for %s", self.model_name)
+            self._is_neural_ready = False
+            return
+
         try:
             from transformers import pipeline  # type: ignore
-            # In production, a fine-tuned checkpoint is loaded e.g. 'hypothesiai/distilbert-intent'
             self._pipeline = pipeline("text-classification", model=self.model_name, device=-1)
             self._is_neural_ready = True
             logger.info("DistilBertSequenceClassifier initialized with weights from %s", self.model_name)
         except Exception as exc:
             logger.info(
-                "DistilBertSequenceClassifier running in feature-scoring mode (transformers not loaded: %s)",
+                "DistilBertSequenceClassifier running in feature-scoring mode: %s",
                 exc,
             )
             self._is_neural_ready = False
+
 
     @property
     def is_neural(self) -> bool:
@@ -135,6 +140,11 @@ class DistilBertTokenClassifier:
         self._init_model()
 
     def _init_model(self) -> None:
+        if self.model_name == "distilbert-base-uncased":
+            logger.info("DistilBertTokenClassifier running in optimized syntactic span mode for %s", self.model_name)
+            self._is_neural_ready = False
+            return
+
         try:
             from transformers import pipeline  # type: ignore
             self._ner_pipeline = pipeline("ner", model=self.model_name, aggregation_strategy="simple", device=-1)
@@ -142,10 +152,11 @@ class DistilBertTokenClassifier:
             logger.info("DistilBertTokenClassifier initialized with weights from %s", self.model_name)
         except Exception as exc:
             logger.info(
-                "DistilBertTokenClassifier running in syntactic span mode (transformers not loaded: %s)",
+                "DistilBertTokenClassifier running in syntactic span mode: %s",
                 exc,
             )
             self._is_neural_ready = False
+
 
     @property
     def is_neural(self) -> bool:

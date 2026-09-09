@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { getMigrationFiles } from '../src/db/migrator';
-import { ALL_TABLE_NAMES } from '../src/db/types';
+import { CORE_TABLE_NAMES, ALL_TABLE_NAMES } from '../src/db/types';
 
 describe('Database Schema & Migration Validation', () => {
   const migrationFiles = getMigrationFiles();
@@ -16,11 +16,21 @@ describe('Database Schema & Migration Validation', () => {
   it('should declare all 15 required entities in 001_core_schema.sql', () => {
     const coreSchema = fs.readFileSync(migrationFiles[0].fullPath, 'utf8');
 
-    ALL_TABLE_NAMES.forEach((tableName) => {
+    CORE_TABLE_NAMES.forEach((tableName) => {
       const tableRegex = new RegExp(`CREATE TABLE IF NOT EXISTS ${tableName}\\s*\\(`, 'i');
       expect(coreSchema).toMatch(tableRegex);
     });
-    expect(ALL_TABLE_NAMES).toHaveLength(15);
+    expect(CORE_TABLE_NAMES).toHaveLength(15);
+  });
+
+  it('should declare research corpora tables in 007_research_corpora.sql', () => {
+    const corpusMigration = migrationFiles.find((m) => m.name === '007_research_corpora.sql');
+    expect(corpusMigration).toBeDefined();
+    if (corpusMigration) {
+      const sql = fs.readFileSync(corpusMigration.fullPath, 'utf8');
+      expect(sql).toContain('CREATE TABLE IF NOT EXISTS corpora');
+      expect(sql).toContain('CREATE TABLE IF NOT EXISTS corpus_papers');
+    }
   });
 
   it('should establish strict foreign key relations and provenance back to papers and sections', () => {

@@ -20,6 +20,18 @@ export interface AuthResult {
 // In-memory fallback store for standalone testing or development when PostgreSQL is not yet spun up
 const inMemoryUsers: Map<string, { id: string; email: string; password_hash: string; full_name?: string | null; role: string; created_at: Date }> = new Map();
 
+// Seed default demo user for instant login
+const DEMO_PASSWORD_HASH = bcrypt.hashSync('Password123!', 10);
+inMemoryUsers.set('researcher@hypothesiai.org', {
+  id: 'usr_demo_researcher_001',
+  email: 'researcher@hypothesiai.org',
+  password_hash: DEMO_PASSWORD_HASH,
+  full_name: 'Dr. Evelyn Reed (Lead Researcher)',
+  role: 'researcher',
+  created_at: new Date('2026-01-01T00:00:00Z'),
+});
+
+
 export class AuthService {
   /**
    * Generates a signed JWT token

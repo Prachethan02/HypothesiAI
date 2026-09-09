@@ -1,12 +1,21 @@
-import { Pool } from 'pg';
+import { Pool, PoolConfig } from 'pg';
 import { config } from '../config';
 import { logger } from '../utils/logger';
 
-export const pgPool = new Pool({
+const poolConfig: PoolConfig = {
   connectionString: config.DATABASE_URL,
-  max: 20,
+  max: config.DATABASE_MAX_CONNECTIONS || 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
+  ssl: config.DATABASE_SSL
+    ? { rejectUnauthorized: false }
+    : undefined,
+};
+
+export const pgPool = new Pool(poolConfig);
+
+pgPool.on('connect', () => {
+  logger.debug('New client connected to PostgreSQL pool');
 });
 
 pgPool.on('error', (err) => {

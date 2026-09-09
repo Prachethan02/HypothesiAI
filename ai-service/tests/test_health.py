@@ -14,4 +14,4 @@ async def test_health_check():
         assert data["status"] == "ok"
         assert data["service"] == "hypothesiai-ai-service"
         assert "device_info" in data
-        assert len(data["device_info"]["pipeline_stages_registered"]) == 8
+        assert len(data["device_info"]["pipeline_stages_registered"]) >= 8

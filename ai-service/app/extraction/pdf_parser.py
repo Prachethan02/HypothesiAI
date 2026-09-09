@@ -157,6 +157,8 @@ def parse_pdf(paper_id: str, file_path: str | Path) -> "ParseResult":
 
     warnings: list[str] = []
 
+    MAX_PARSABLE_PAGES = 500
+
     try:
         doc = fitz.open(str(path))
     except Exception as exc:
@@ -164,122 +166,135 @@ def parse_pdf(paper_id: str, file_path: str | Path) -> "ParseResult":
 
     total_pages = len(doc)
     if total_pages == 0:
+        doc.close()
         raise ValueError("PDF has no pages.")
+
+    if total_pages > MAX_PARSABLE_PAGES:
+        doc.close()
+        raise ValueError(
+            f"PDF exceeds maximum permitted length of {MAX_PARSABLE_PAGES} pages "
+            f"(received {total_pages} pages). Oversized documents are rejected for security."
+        )
 
     logger.info("Parsing PDF: paper_id=%s  pages=%d  file=%s", paper_id, total_pages, path.name)
 
-    # ------------------------------------------------------------------
-    # Phase 1: Collect per-page text lines
-    # ------------------------------------------------------------------
-    segments: list[RawSegment] = []
-    current_section: str = "other"
-    current_heading: Optional[str] = None
-    current_segment: Optional[RawSegment] = None
+    try:
+        # ------------------------------------------------------------------
+        # Phase 1: Collect per-page text lines
+        # ------------------------------------------------------------------
+        segments: list[RawSegment] = []
+        current_section: str = "other"
+        current_heading: Optional[str] = None
+        current_segment: Optional[RawSegment] = None
 
-    def _flush_segment() -> None:
-        nonlocal current_segment
-        if current_segment and current_segment.lines:
-            text = current_segment.text.strip()
-            if text:
-                segments.append(current_segment)
-        current_segment = None
+        def _flush_segment() -> None:
+            nonlocal current_segment
+            if current_segment and current_segment.lines:
+                text = current_segment.text.strip()
+                if text:
+                    segments.append(current_segment)
+            current_segment = None
 
-    for page_idx in range(total_pages):
-        page_num = page_idx + 1
-        page = doc[page_idx]
+        for page_idx in range(total_pages):
+            page_num = page_idx + 1
+            page = doc[page_idx]
 
-        # Extract text as a list of text blocks, then lines
-        try:
-            raw_text = page.get_text("text")  # plain text, preserves layout order
-        except Exception as exc:
-            warnings.append(f"Page {page_num}: text extraction failed — {exc}")
-            continue
-
-        lines = raw_text.split("\n")
-
-        for line in lines:
-            line_stripped = line.strip()
-            if not line_stripped:
+            # Extract text as a list of text blocks, then lines
+            try:
+                raw_text = page.get_text("text")  # plain text, preserves layout order
+            except Exception as exc:
+                warnings.append(f"Page {page_num}: text extraction failed — {exc}")
                 continue
 
-            # Check if this line is a section heading
-            if _is_likely_heading(line_stripped):
-                detected = _detect_section(line_stripped)
-                if detected:
-                    # Start a new segment for the new section
+            lines = raw_text.split("\n")
+
+            for line in lines:
+                line_stripped = line.strip()
+                if not line_stripped:
+                    continue
+
+                # Check if this line is a section heading
+                if _is_likely_heading(line_stripped):
+                    detected = _detect_section(line_stripped)
+                    if detected:
+                        # Start a new segment for the new section
+                        _flush_segment()
+                        current_section = detected
+                        current_heading = line_stripped
+                        current_segment = RawSegment(
+                            paper_id=paper_id,
+                            page_number=page_num,
+                            section_type=current_section,
+                            heading=current_heading,
+                        )
+                        logger.debug("  → Section detected: [%s] '%s' on page %d",
+                                     detected, line_stripped, page_num)
+                        continue
+                    # It's a heading-like line but not a known section;
+                    # treat it as a paragraph separator — flush and continue in same section
+                    # (Don't break the current segment)
+
+                # Regular text line: ensure we have an active segment
+                if current_segment is None or current_segment.page_number != page_num:
+                    # Page boundary — start new segment, keep current section
                     _flush_segment()
-                    current_section = detected
-                    current_heading = line_stripped
                     current_segment = RawSegment(
                         paper_id=paper_id,
                         page_number=page_num,
                         section_type=current_section,
-                        heading=current_heading,
+                        heading=None,
                     )
-                    logger.debug("  → Section detected: [%s] '%s' on page %d",
-                                 detected, line_stripped, page_num)
-                    continue
-                # It's a heading-like line but not a known section;
-                # treat it as a paragraph separator — flush and continue in same section
-                # (Don't break the current segment)
 
-            # Regular text line: ensure we have an active segment
-            if current_segment is None or current_segment.page_number != page_num:
-                # Page boundary — start new segment, keep current section
-                _flush_segment()
-                current_segment = RawSegment(
-                    paper_id=paper_id,
-                    page_number=page_num,
-                    section_type=current_section,
-                    heading=None,
+                current_segment.lines.append(line_stripped)
+
+        # Flush the last segment
+        _flush_segment()
+
+        # ------------------------------------------------------------------
+        # Phase 2: Validate & convert to Pydantic TextSegment models
+        # ------------------------------------------------------------------
+        if not segments:
+            warnings.append("No text segments extracted — the PDF may be scanned/image-only.")
+
+        pydantic_segments: list[TextSegment] = []
+        for seg in segments:
+            text = seg.text.strip()
+            if len(text) < 10:
+                continue  # Skip near-empty segments (noise/headers/footers)
+            pydantic_segments.append(
+                TextSegment(
+                    paper_id=seg.paper_id,
+                    page_number=seg.page_number,
+                    section_type=seg.section_type,
+                    heading=seg.heading,
+                    text=text,
                 )
-
-            current_segment.lines.append(line_stripped)
-
-    # Flush the last segment
-    _flush_segment()
-    doc.close()
-
-    # ------------------------------------------------------------------
-    # Phase 2: Validate & convert to Pydantic TextSegment models
-    # ------------------------------------------------------------------
-    if not segments:
-        warnings.append("No text segments extracted — the PDF may be scanned/image-only.")
-
-    pydantic_segments: list[TextSegment] = []
-    for seg in segments:
-        text = seg.text.strip()
-        if len(text) < 10:
-            continue  # Skip near-empty segments (noise/headers/footers)
-        pydantic_segments.append(
-            TextSegment(
-                paper_id=seg.paper_id,
-                page_number=seg.page_number,
-                section_type=seg.section_type,
-                heading=seg.heading,
-                text=text,
             )
+
+        sections_detected = sorted(set(s.section_type for s in pydantic_segments))
+
+        logger.info(
+            "Parsing complete: paper_id=%s  segments=%d  sections=%s",
+            paper_id, len(pydantic_segments), sections_detected,
         )
 
-    sections_detected = sorted(set(s.section_type for s in pydantic_segments))
-
-    logger.info(
-        "Parsing complete: paper_id=%s  segments=%d  sections=%s",
-        paper_id, len(pydantic_segments), sections_detected,
-    )
-
-    return ParseResult(
-        paper_id=paper_id,
-        total_pages=total_pages,
-        total_segments=len(pydantic_segments),
-        sections_detected=sections_detected,
-        segments=pydantic_segments,
-        metadata={
-            "filename": path.name,
-            "file_size_bytes": path.stat().st_size,
-        },
-        warnings=warnings,
-    )
+        return ParseResult(
+            paper_id=paper_id,
+            total_pages=total_pages,
+            total_segments=len(pydantic_segments),
+            sections_detected=sections_detected,
+            segments=pydantic_segments,
+            metadata={
+                "filename": path.name,
+                "file_size_bytes": path.stat().st_size,
+            },
+            warnings=warnings,
+        )
+    finally:
+        try:
+            doc.close()
+        except Exception:
+            pass
 
 
 # ---------------------------------------------------------------------------

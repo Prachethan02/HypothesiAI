@@ -1,6 +1,9 @@
 version: '3.8'
 
 services:
+  # ----------------------------------------------------------------------------
+  # 1. PostgreSQL with pgvector extension
+  # ----------------------------------------------------------------------------
   postgres:
     image: pgvector/pgvector:pg16
     container_name: hypothesiai-postgres
@@ -14,32 +17,152 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+    networks:
+      - hypothesiai-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d hypothesiai"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
 
+  # ----------------------------------------------------------------------------
+  # 2. Neo4j Graph Database
+  # ----------------------------------------------------------------------------
   neo4j:
     image: neo4j:5.20.0-community
     container_name: hypothesiai-neo4j
     restart: unless-stopped
     ports:
-      - "7474:7474" # HTTP Browser
-      - "7687:7687" # Bolt protocol
+      - "7474:7474" # Web Browser
+      - "7687:7687" # Bolt Protocol
     environment:
       - NEO4J_AUTH=neo4j/hypothesiai_secret
       - NEO4J_PLUGINS=["apoc"]
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
+    networks:
+      - hypothesiai-network
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:7474"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 15s
+
+  # ----------------------------------------------------------------------------
+  # 3. Python AI Engine Service (FastAPI)
+  # ----------------------------------------------------------------------------
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: hypothesiai-ai-service
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - HOST=0.0.0.0
+      - PORT=8000
+      - BACKEND_INTERNAL_URL=http://backend:5000
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:5000
+      - MODEL_CACHE_DIR=/app/.cache/models
+      - DEVICE=auto
+      - MAX_WORKERS=2
+    volumes:
+      - model_cache:/app/.cache/models
+    networks:
+      - hypothesiai-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ----------------------------------------------------------------------------
+  # 4. Node.js Backend API Gateway (Express)
+  # ----------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hypothesiai-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=development
+      - PORT=5000
+      - API_PREFIX=/api/v1
+      - CORS_ORIGIN=http://localhost:3000,http://localhost:5173
+      - DATABASE_URL=postgresql://postgres:postgrespassword@postgres:5432/hypothesiai
+      - DATABASE_SSL=false
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=hypothesiai_secret
+      - NEO4J_DATABASE=neo4j
+      - AI_SERVICE_URL=http://ai-service:8000
+      - STORAGE_DRIVER=local
+      - STORAGE_BUCKET=hypothesiai-papers
+      - JWT_SECRET=hypothesiai_local_dev_jwt_secret_key_change_me
+    volumes:
+      - paper_uploads:/app/uploads
+    networks:
+      - hypothesiai-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ----------------------------------------------------------------------------
+  # 5. Frontend Client Application (Vite + Nginx)
+  # ----------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=http://localhost:5000/api/v1
+    container_name: hypothesiai-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    networks:
+      - hypothesiai-network
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 volumes:
   postgres_data:
+    driver: local
   neo4j_data:
+    driver: local
   neo4j_logs:
+    driver: local
+  paper_uploads:
+    driver: local
+  model_cache:
+    driver: local
+
+networks:
+  hypothesiai-network:
+    driver: bridge

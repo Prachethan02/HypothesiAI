@@ -20,14 +20,31 @@ declare global {
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
   const authHeader = req.headers.authorization;
 
+  const rejectUnauthenticated = (statusCode: number, message: string) => {
+    let sent = false;
+    const sendResponse = () => {
+      if (!sent) {
+        sent = true;
+        res.status(statusCode).json({
+          success: false,
+          error: { message, statusCode },
+        });
+      }
+    };
+
+    if (req.complete || !req.readable) {
+      sendResponse();
+    } else {
+      req.on('data', () => {});
+      req.on('end', sendResponse);
+      req.on('error', sendResponse);
+      req.resume();
+      setTimeout(sendResponse, 100);
+    }
+  };
+
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).json({
-      success: false,
-      error: {
-        message: 'Authentication required. Missing Bearer token.',
-        statusCode: 401,
-      },
-    });
+    rejectUnauthenticated(401, 'Authentication required. Missing Bearer token.');
     return;
   }
 
@@ -43,12 +60,6 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
     };
     next();
   } catch (err: any) {
-    res.status(401).json({
-      success: false,
-      error: {
-        message: 'Invalid or expired authentication token.',
-        statusCode: 401,
-      },
-    });
+    rejectUnauthenticated(401, 'Invalid or expired authentication token.');
   }
 }
